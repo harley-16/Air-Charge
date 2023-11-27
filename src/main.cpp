@@ -4,6 +4,7 @@
 #include <SensirionI2CSen5x.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include "HTTPUpdate.h"//HTTP OTA库
 #include <esp_wifi.h>
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
@@ -17,7 +18,8 @@
 
 #include "bmp.h"    //导入图库
 #include "font_diy.h"//导入字库
-#include "HttpsOTAUpdate.h"//HTTPS OTA库
+// #include "HttpsOTAUpdate.h"//HTTPS OTA库
+
 // SEN55 Read Measurement
 float massConcentrationPm1p0;
 float massConcentrationPm2p5;
@@ -61,11 +63,15 @@ char client_id[20] = "RTair-"; // 标识当前设备的客户端编号
 //*****MQTT接收解析JSON数据声明部分*****//
 StaticJsonDocument<200> jsonBuffer; //声明一个JsonDocument对象，长度200
 DeserializationError jsonerror;// 反序列化JSON
-char jsonweath[20] = "未晴";
-char screenweath[20] = "未晴";
+char jsonweath[20] = "未知";
+char screenweath[20] = "未知";
 //*****OTA升级相关数据声明部分*****//
-static const char *OTA_url = "https://example.com/firmware.bin"; //state url of your firmware image
-// HttpsOTAUpdateClass HttpsOTA;
+static const char *OTA_url = "http://221.224.143.146:9800/center/firmware1.bin"; //state url of your firmware image+
+// String OTA_Burl = "http://bin.bemfa.com/b/3BcMzgxODlhNjllNDcyNGQyY2JiNTM0MTExMjA0MmRmNGQ=Air.bin";//远程固件链接（测试）
+String BUID = "38189a69e4724d2cbb5341112042df4d";
+int ota_state=0;
+char ota_version[]="V0.33";
+/*// HttpsOTAUpdateClass HttpsOTA;
 static HttpsOTAStatus_t otastatus;
 static const char *server_certificate = "-----BEGIN CERTIFICATE-----\n" \
      "MIIEkjCCA3qgAwIBAgIQCgFBQgAAAVOFc2oLheynCDANBgkqhkiG9w0BAQsFADA/\n" \
@@ -94,7 +100,8 @@ static const char *server_certificate = "-----BEGIN CERTIFICATE-----\n" \
      "PfZ+G6Z6h7mjem0Y+iWlkYcV4PIWL1iwBi8saCbGS5jN2p8M+X+Q7UNKEkROb3N6\n" \
      "KOqkqm57TH2H3eDJAkSnh6/DNFu0Qg==\n" \
      "-----END CERTIFICATE-----";
-     
+*/
+
 //*****自定义变量声明*****//
 char strbuff[20]; // 缓存芯片ID 高2byte，最终存放chipid的数组
 uint64_t chipid;  // 读取到的 uint 型芯片ID
@@ -169,7 +176,13 @@ void my_client_publish(char *cardidBuff, char *temperatureBuff);
 void reconnect();
 void Wifi_connect(void);
 bool autoConfig(void);
-
+void update_started();
+//当升级结束时，打印日志
+void update_finished();
+//当升级中，打印日志
+void update_progress(int cur, int total);
+//当升级失败时，打印日志
+void update_error(int err);
 void showImage(int32_t x, int32_t y, int32_t w, int32_t h, const uint16_t *data);//函数声明
 #define PI_BUF_SIZE 128
 /**********RTOS任务声明**********/
@@ -209,6 +222,11 @@ void task5(void *pvParameters); // 任务函数
 TaskHandle_t Tasks6_TaskHandle; // 任务句柄
 void Screeen_task(void *pvParameters); // 任务函数
 
+// 任务7 OTA
+#define TASK7_TASK_PRIO 4       // 任务优先级
+#define TASK7_STK_SIZE 1024*6     // 任务堆栈大小
+TaskHandle_t Tasks7_TaskHandle; // 任务句柄
+void OTA_task(void *pvParameters); // 任务函数
 // 系统软件复位入口函数
 void (*resetFunc)(void) = 0;
 class WATCHDOG
@@ -678,6 +696,8 @@ void getChipidID(void)
     strcat(espId_buff, buff);
   }
   sprintf(TOPIC, "%sset", espId_buff);
+  
+  Serial.printf("ESP32 version = %s\r\n", ota_version);
   Serial.printf("ESP32 TOPIC = %s\r\n", TOPIC);
   Serial.printf("ESP32 chipid = %s\r\n", espId_buff);
   Serial.printf("WiFi MAC address: %02x:%02x:%02x:%02x:%02x:%02x\r\n", macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4], macAddr[5]);
@@ -788,6 +808,7 @@ void Mqtt_getcallback(char* topic, byte* payload, unsigned int length) {
   const char* jsonstr3 = jsonBuffer["unbindMachine"];           // 读取字符串
   // 输出结果：打印解析后的值
   Serial.println(jsonstr3);   
+  ota_state = jsonBuffer["OTAstate"];           // 读取字符串
   
 }
 //外部K1中断回调函数
@@ -1061,6 +1082,49 @@ void screen_test()
     tft.unloadFont();
   }
 }
+//OTA相关函数
+void OTA_updateBin()
+{
+  WiFiClient UpdateClient;
+  httpUpdate.onStart(update_started);     //当升级开始时
+  httpUpdate.onEnd(update_finished);      //当升级结束时
+  httpUpdate.onProgress(update_progress); //当升级中
+  httpUpdate.onError(update_error);       //当升级失败时
+  t_httpUpdate_return ret = httpUpdate.update(UpdateClient, OTA_url);
+  switch (ret) 
+  {
+    case HTTP_UPDATE_FAILED:      //当升级失败
+      Serial.println("[update] Update failed.");
+      break;
+    case HTTP_UPDATE_NO_UPDATES:  //当无升级
+      Serial.println("[update] Update no Update.");
+      break;
+    case HTTP_UPDATE_OK:         //当升级成功
+      Serial.println("[update] Update ok.");
+      break;
+  }
+
+}
+//当升级开始时，打印日志
+void update_started()
+{
+  Serial.println("CALLBACK:  HTTP update process started");
+}
+//当升级结束时，打印日志
+void update_finished()
+{
+  Serial.println("CALLBACK:  HTTP update process finished");
+}
+//当升级中，打印日志
+void update_progress(int cur, int total)
+{
+  Serial.printf("CALLBACK:  HTTP update process at %d of %d bytes[%.1f%%]...\n", cur, total, cur * 100.0 / total);
+}
+//当升级失败时，打印日志
+void update_error(int err)
+{
+  Serial.printf("CALLBACK:  HTTP update fatal error code %d\n", err);
+}
 
 void setup()
 {
@@ -1095,6 +1159,7 @@ void setup()
   xTaskCreate(task4, "task4_task", TASK4_STK_SIZE, NULL, TASK4_TASK_PRIO, NULL);
   xTaskCreate(task5, "task5_task", TASK5_STK_SIZE, NULL, TASK5_TASK_PRIO, NULL);
   xTaskCreate(Screeen_task, "task6_task", TASK6_STK_SIZE, NULL, TASK6_TASK_PRIO, NULL);
+  xTaskCreate(OTA_task, "task7_task", TASK7_STK_SIZE, NULL, TASK7_TASK_PRIO, NULL);
 }
 
 void loop()
@@ -1179,12 +1244,6 @@ void task3(void *pvParameters)
     if (wifi_connect_ok) // wifi连接OK
     {
       M_send();
-      // if(Scan_time++>5)
-      // {
-      //   Serial.printf("scan test!\r\n");
-      //   Scan_time=0;
-      //   wifi_scan();
-      // }
     }
     
     vTaskDelay(1000 / portTICK_PERIOD_MS); // 等待s
@@ -1265,5 +1324,19 @@ void Screeen_task(void *pvParameters)
     screen_test();
     
     vTaskDelay(1400 / portTICK_PERIOD_MS); // 等待0.7s
+  }
+}
+
+/*RTOS 任务7 : OTA*/
+void OTA_task(void *pvParameters)
+{
+  while (true)
+  {
+    if(ota_state)
+    {
+      ota_state=0;
+      OTA_updateBin();
+    }
+    vTaskDelay(1000 / portTICK_PERIOD_MS); // 等待1s
   }
 }
