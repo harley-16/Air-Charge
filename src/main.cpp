@@ -36,12 +36,13 @@ TFT_eSPI tft = TFT_eSPI(); // Invoke library, pins defined in User_Setup.h
 char Screen_page=0;
 char Screen_chage=0;
 int Screen_Aqi=0;
-float Screen_temp=0;
-float Screen_hum=0;
+int Screen_temp=0;
+int Screen_hum=0;
 int Screen_pm25=0;
 int Screen_pm10=0;
 int Screen_voc=0;
 int Screen_nox=0;
+int Screen_wifi=0;
 /*WiFi配置*/
 const char *wifi_id = "1801";
 const char *wifi_psw = "realtemp";
@@ -64,13 +65,12 @@ char client_id[20] = "RTair-"; // 标识当前设备的客户端编号
 StaticJsonDocument<200> jsonBuffer; //声明一个JsonDocument对象，长度200
 DeserializationError jsonerror;// 反序列化JSON
 char jsonweath[20] = "未知";
-char screenweath[20] = "未知";
+char screenweath[20] = "";
 //*****OTA升级相关数据声明部分*****//
 static const char *OTA_url = "http://221.224.143.146:9800/center/firmware1.bin"; //state url of your firmware image+
 // String OTA_Burl = "http://bin.bemfa.com/b/3BcMzgxODlhNjllNDcyNGQyY2JiNTM0MTExMjA0MmRmNGQ=Air.bin";//远程固件链接（测试）
-String BUID = "38189a69e4724d2cbb5341112042df4d";
 int ota_state=0;
-char ota_version[]="V0.33";
+char ota_version[]="V0.01_1";
 /*// HttpsOTAUpdateClass HttpsOTA;
 static HttpsOTAStatus_t otastatus;
 static const char *server_certificate = "-----BEGIN CERTIFICATE-----\n" \
@@ -890,9 +890,11 @@ void screen_test()
   {
     Screen_chage=0;
     tft.fillScreen(TFT_BLACK);
+    Screen_wifi=-1;
     if(Screen_page==0)
     {
       Screen_Aqi=0;
+      memset(screenweath, 0, strlen(screenweath));
     }
     if(Screen_page==1)
     {
@@ -913,7 +915,7 @@ void screen_test()
     tft.fillRoundRect(136,19,15,7,3,TFT_ORANGE);//圆角矩形x,y,w,h,r
     tft.fillCircle(164,22,3,0x632C);//灰点0x632C
     tft.fillCircle(180,22,3,0x632C);//灰点
-    tft.drawBitmap(279,14,icon_wifi1,17,16,0xC618);
+    tft.drawBitmap(279,14,icon_wifi2,17,16,0xC618);//WiFi断开图标
     if(color_num++<5)
     {
       tft.fillRoundRect(40,86,37,6,3,TFT_ORANGE);//圆角矩形x,y,w,h,r
@@ -930,12 +932,15 @@ void screen_test()
     if(Screen_Aqi!=Aqi_PM25_value)
     {
       tft.loadFont(font_90);
-      tft.setTextColor(TFT_WHITE, TFT_BLACK);
-      Screen_Aqi=Aqi_PM25_value;
       memset(strbuff1, 0, strlen(strbuff1));
+      sprintf(strbuff1, "%d", Screen_Aqi);
+      tft.setTextColor(TFT_BLACK, TFT_BLACK);
+      tft.drawString(strbuff1,24,125);
+      
       sprintf(strbuff1, "%d", Aqi_PM25_value);
-      tft.fillRect(24,125,180,90,TFT_BLACK);
-      tft.drawString(strbuff1,24.19,125.22);
+      tft.setTextColor(TFT_WHITE, TFT_BLACK);
+      tft.drawString(strbuff1,24,125);
+      Screen_Aqi=Aqi_PM25_value;
       tft.unloadFont();
     }
     
@@ -943,8 +948,9 @@ void screen_test()
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
     tft.drawString("AQI",40,58);
     
-    if(screenweath!=jsonweath)
+    if(strcmp(screenweath,jsonweath) != 0)
     {
+      int strnum =strcmp(screenweath,jsonweath);
       tft.setTextColor(TFT_BLACK, TFT_BLACK);
       tft.drawString(screenweath,199,58);//天气
       
@@ -954,24 +960,36 @@ void screen_test()
     }
     tft.unloadFont();
 
-    tft.fillRect(280,147,17,3.35,0x632C);
+    tft.fillRect(270,147,25,3,0x632C);
     tft.loadFont(font_32);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
     // tft.setTextDatum(TR_DATUM);//默认左上，此处为右上
-    tft.drawString("  8°",264,106);
-    tft.drawString("15°",264,166);
+    sprintf(strbuff1, "%2d", 8);
+    tft.drawString(strbuff1,255,106);
+    tft.drawString("15°",255,166);
     tft.unloadFont();
-
   }
   if(Screen_page==1)
   {
-    // tft.pushImage(0, 0,  320, 240, gImage_test);//显示图片gImage_qq//效果最好
-
     //页眉
     tft.fillCircle(146,22,3,0x632C);//灰点
     tft.fillRoundRect(156,19,15,7,3,TFT_ORANGE);//圆角矩形x,y,w,h,r
     tft.fillCircle(180,22,3,0x632C);//灰点0x632C
-    tft.drawBitmap(279,14,icon_wifi1,17,16,0xC618);
+    if(Screen_wifi!=wifi_connect_ok)
+    {
+      if(wifi_connect_ok)
+      {
+        tft.drawBitmap(279,14,icon_wifi2,17,16,TFT_BLACK);//WiFi断开图标
+        tft.drawBitmap(279,14,icon_wifi1,17,16,0xC618);//WiFi连接图标
+      }
+      else
+      {
+        tft.drawBitmap(279,14,icon_wifi1,17,16,TFT_BLACK);//WiFi图标
+        tft.drawBitmap(279,14,icon_wifi2,17,16,0xC618);//WiFi断开图标
+      }
+    }
+    
+    
     
     tft.loadFont(font_23);
     tft.setTextColor(0xB596, TFT_BLACK);
@@ -981,30 +999,31 @@ void screen_test()
 
     tft.loadFont(font_64);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    if(Screen_temp!=ambientTemperature)
+    if(Screen_temp!=(int)ambientTemperature)
     {
       memset(strbuff1, 0, strlen(strbuff1));
-      sprintf(strbuff1, "%.1f", Screen_temp);
+      sprintf(strbuff1, "%d", Screen_temp);
       tft.setTextColor(TFT_BLACK, TFT_BLACK);
       tft.drawString(strbuff1,40,109);//wendu
       
-      sprintf(strbuff1, "%.1f", ambientTemperature);
+      sprintf(strbuff1, "%d", (int)ambientTemperature);
       tft.setTextColor(TFT_WHITE, TFT_BLACK);
       tft.drawString(strbuff1,40,109);//wendu
-      Screen_temp=ambientTemperature;
+      Serial.printf("Screen_temp %d,ambientTemperature %d\r\n",Screen_temp,ambientTemperature);
+      Screen_temp=(int)ambientTemperature;
     }
-
-    if(Screen_hum!=ambientHumidity)
+    if(Screen_hum!=(int)ambientHumidity)
     {
       memset(strbuff1, 0, strlen(strbuff1));
-      sprintf(strbuff1, "%.1f", Screen_hum);
+      sprintf(strbuff1, "%d", Screen_hum);
       tft.setTextColor(TFT_BLACK, TFT_BLACK);
       tft.drawString(strbuff1,190,109);//shidu
       
-      sprintf(strbuff1, "%.1f", ambientHumidity);
+      sprintf(strbuff1, "%d", (int)ambientHumidity);
       tft.setTextColor(TFT_WHITE, TFT_BLACK);
       tft.drawString(strbuff1,190,109);//shidu
-      Screen_hum=ambientHumidity;
+      Serial.printf("Screen_hum %d,ambientHumidity %d\r\n",Screen_hum,ambientHumidity);
+      Screen_hum=(int)ambientHumidity;
     }
     tft.unloadFont(); 
   }
@@ -1255,26 +1274,13 @@ void task4(void *pvParameters)
 {
   while (true)
   {
-    // if (mqtt_flag == 1) // mqtt连接成功，LED闪烁
-    // if (1) // LED闪烁
-    // {
-    //   led_State = !led_State;
-    //   digitalWrite(LED1, led_State); // LED反转
-    // }
-    // else
-    // {
-    //   digitalWrite(LED1, LOW); // LED--ON
-    // }
-    
     if (screenstate == 1) 
     {
       digitalWrite(screen, HIGH);  
-      digitalWrite(LED1, HIGH);// LED1
     }
     if (screenstate == 0) 
     {
-      digitalWrite(screen, LOW);  // 
-      digitalWrite(LED1, LOW);// LED1
+      digitalWrite(screen, LOW);  // 屏幕判断
     }
     vTaskDelay(700 / portTICK_PERIOD_MS); // 等待0.7s
   }
@@ -1323,7 +1329,7 @@ void Screeen_task(void *pvParameters)
 
     screen_test();
     
-    vTaskDelay(1400 / portTICK_PERIOD_MS); // 等待0.7s
+    vTaskDelay(700 / portTICK_PERIOD_MS); // 等待0.7s
   }
 }
 
@@ -1335,6 +1341,7 @@ void OTA_task(void *pvParameters)
     if(ota_state)
     {
       ota_state=0;
+      digitalWrite(screen, LOW);  // 屏幕关闭
       OTA_updateBin();
     }
     vTaskDelay(1000 / portTICK_PERIOD_MS); // 等待1s
