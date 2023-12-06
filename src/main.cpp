@@ -412,7 +412,7 @@ void Sen55_init()
   // Adjust tempOffset to account for additional temperature offsets//`setRht选择模式`。
   // exceeding the SEN module's self heating.//超过SEN模块的自加热。
 
-  float tempOffset = -1.6;
+  float tempOffset = 0;
   error = sen5x.setTemperatureOffsetSimple(tempOffset);
   if (error)
   {
@@ -427,6 +427,19 @@ void Sen55_init()
     Serial.println(" deg. Celsius (SEN54/SEN55 only");
   }
 
+  int AccelerationMode = 2;
+  error = sen5x.setRhtAccelerationMode(AccelerationMode);
+  if (error)
+  {
+    Serial.print("Error trying to execute setRhtAccelerationMode(): ");
+    errorToString(error, errorMessage, 256);
+    Serial.println(errorMessage);
+  }
+  else
+  {
+    Serial.print("Temperature AccelerationMode set to ");
+    Serial.print(AccelerationMode);
+  }
   // Start Measurement
   error = sen5x.startMeasurement();
   if (error)
