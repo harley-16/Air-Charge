@@ -136,8 +136,8 @@ int analogOriginalnum = 0;
 //*****引脚控制变量*****
 #define Touch_K1 0
 #define screen 1
-#define ADC_V 2
-#define ADC_I 3
+#define ADC_V 3
+#define ADC_I 2
 #define Rest_K1 10
 #define LED1 10
 
@@ -1522,12 +1522,12 @@ void task5(void *pvParameters)
     // }
     analogOriginalValueI = analogRead(ADC_I); // 读取ADC原始值
     analogOriginalValueV = analogRead(ADC_V); // 读取ADC原始值  
-    changeVoltsSumV = analogOriginalValueV * 2950 / 4095.0;
+    changeVoltsSumV = analogOriginalValueV * 2900 / 4096.0;
     changeVoltsSumI = analogOriginalValueI * 2950 / 4095.0;
     power=(changeVoltsSumV*49)/10*changeVoltsSumI/1000/1000;
-    Serial.printf("VADC analog value = %d ,%.1f mV VIN = %.1f\r\n", analogOriginalValueV, changeVoltsSumV , (changeVoltsSumV*49)/10);
-    Serial.printf("IADC analog value = %d ,%.1f mV\r\n", analogOriginalValueI, changeVoltsSumI);
-    Serial.printf("power value = %d ,%.2f ,%.1f W\r\n", (int)power, power, power);
+    // Serial.printf("VADC analog value = %d ,%.1f mV VIN = %.1f\r\n", analogOriginalValueV, changeVoltsSumV , (changeVoltsSumV*49)/10);
+    // Serial.printf("IADC analog value = %d ,%.1f mV\r\n", analogOriginalValueI, changeVoltsSumI);
+    // Serial.printf("power value = %d ,%.2f ,%.1f W\r\n", (int)power, power, power);
     vTaskDelay(1000 / portTICK_PERIOD_MS); // 等待1s
   }
 }
