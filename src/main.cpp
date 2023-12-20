@@ -49,6 +49,8 @@ int MQTT_weatemp_max = -254;
 int MQTT_weatemp_min = -254;
 int Screen_power = -1;
 float power;
+char Screen_Rotation = 0; // 屏幕方向，正向：0，反向：1
+char MQTT_Rotation = 0;   // 屏幕方向，正向：0，反向：1
 /*WiFi配置*/
 const char *wifi_id = "1801";
 const char *wifi_psw = "realtemp";
@@ -60,14 +62,14 @@ uint8_t macAddr[6]; // 定义macAddr为uint8_t类型的数组，这个数组含�
 uint8_t btAddr[6];  // 蓝牙MAC地址
 
 //*****MQTT协议数据声明部分*****//
-WiFiClient espClient;                        // 定义wifiClient实例
-long lastMsg = 0;                            // 记录上一次发送信息的时长
-const char *mqtt_server = "221.224.143.146"; // 使用HIVEMQ 的信息中转服务
-const int port = 1883;                       // 端口号
-char TOPIC[20] = "set";                      // 订阅信息主题
-char client_id[20] = "RTair-";               // 标识当前设备的客户端编号
-void Mqtt_getcallback(char *topic, byte *payload, unsigned int length);//回调函数
-PubSubClient client(mqtt_server, port, Mqtt_getcallback, espClient);              // 定义PubSubClient的实例
+WiFiClient espClient;                                                   // 定义wifiClient实例
+long lastMsg = 0;                                                       // 记录上一次发送信息的时长
+const char *mqtt_server = "221.224.143.146";                            // 使用HIVEMQ 的信息中转服务
+const int port = 1883;                                                  // 端口号
+char TOPIC[20] = "set";                                                 // 订阅信息主题
+char client_id[20] = "RTair-";                                          // 标识当前设备的客户端编号
+void Mqtt_getcallback(char *topic, byte *payload, unsigned int length); // 回调函数
+PubSubClient client(mqtt_server, port, Mqtt_getcallback, espClient);    // 定义PubSubClient的实例
 //*****MQTT接收解析JSON数据声明部分*****//
 StaticJsonDocument<200> jsonBuffer; // 声明一个JsonDocument对象，长度200
 DeserializationError jsonerror;     // 反序列化JSON
@@ -211,7 +213,7 @@ void task1(void *pvParameters); // 任务函数
 
 // 任务2 网络连接
 #define TASK2_TASK_PRIO 1       // 任务优先级
-#define TASK2_STK_SIZE 1024*4     // 任务堆栈大小
+#define TASK2_STK_SIZE 1024 * 4 // 任务堆栈大小
 TaskHandle_t Tasks2_TaskHandle; // 任务句柄
 void task2(void *pvParameters); // 任务函数
 
@@ -400,7 +402,7 @@ void Sen55_init()
   // designed into a device, the temperature compensation might need//设计成一个设备，温度补偿可能需要
   // to be adapted to incorporate the change in thermal coupling and//以适应热耦合的变化，以及
   // self-heating of other device components.//其他设备部件的自加热。
-  
+
   // A guide to achieve optimal performance, including references//实现最佳性能的指南，包括参考资料
   // to mechanical design-in examples can be found in the app note//到机械设计的例子可以在应用程序说明中找到
   // “SEN5x – Temperature Compensation Instruction” at www.sensirion.com.//www.sensirion.com上的“SEN5x–温度补偿说明”。
@@ -408,7 +410,7 @@ void Sen55_init()
   // on the advanced compensation settings used//关于使用的高级补偿设置
   // in `setTemperatureOffsetParameters`, `setWarmStartParameter` and//在“setTemperatureOffsetParameters”、“setWarmStartParameter”和
   // `setRhtAccelerationMode`.//`setRht选择模式`。
-  
+
   // Adjust tempOffset to account for additional temperature offsets//`setRht选择模式`。
   // exceeding the SEN module's self heating.//超过SEN模块的自加热。
 
@@ -458,7 +460,7 @@ void Sen55_Read()
   int slider_num;
   delay(1000);
 
-  error = sen5x.readMeasuredValues(//返回测量值
+  error = sen5x.readMeasuredValues( // 返回测量值
       massConcentrationPm1p0, massConcentrationPm2p5, massConcentrationPm4p0,
       massConcentrationPm10p0, ambientHumidity, ambientTemperature, vocIndex,
       noxIndex);
@@ -471,38 +473,38 @@ void Sen55_Read()
   }
   else
   {
-  //   if (isnan(massConcentrationPm1p0))
-  //   {
-  //     Serial.print("n/a");
-  //   }
-  //   else
-  //   {
-  //     Serial.print("MassConcentrationPm1p0:");
-  //     Serial.print(massConcentrationPm1p0);
-  //     Serial.print("\t");
-  //   }
+    //   if (isnan(massConcentrationPm1p0))
+    //   {
+    //     Serial.print("n/a");
+    //   }
+    //   else
+    //   {
+    //     Serial.print("MassConcentrationPm1p0:");
+    //     Serial.print(massConcentrationPm1p0);
+    //     Serial.print("\t");
+    //   }
 
-  //   if (isnan(massConcentrationPm2p5))
-  //   {
-  //     Serial.print("n/a");
-  //   }
-  //   else
-  //   {
-  //     Serial.print("MassConcentrationPm2p5:");
-  //     Serial.print(massConcentrationPm2p5);
-  //     Serial.print("\t");
-  //   }
+    //   if (isnan(massConcentrationPm2p5))
+    //   {
+    //     Serial.print("n/a");
+    //   }
+    //   else
+    //   {
+    //     Serial.print("MassConcentrationPm2p5:");
+    //     Serial.print(massConcentrationPm2p5);
+    //     Serial.print("\t");
+    //   }
 
-  //   if (isnan(massConcentrationPm10p0))
-  //   {
-  //     Serial.print("n/a");
-  //   }
-  //   else
-  //   {
-  //     Serial.print("massConcentrationPm10p0:");
-  //     Serial.print(massConcentrationPm10p0);
-  //     Serial.print("\t");
-  //   }
+    //   if (isnan(massConcentrationPm10p0))
+    //   {
+    //     Serial.print("n/a");
+    //   }
+    //   else
+    //   {
+    //     Serial.print("massConcentrationPm10p0:");
+    //     Serial.print(massConcentrationPm10p0);
+    //     Serial.print("\t");
+    //   }
 
     if (massConcentrationPm2p5 >= 0 & massConcentrationPm2p5 <= 35)
     {
@@ -604,8 +606,8 @@ void M_send()
 
   memset(strbuff1, 0, strlen(strbuff1));
   sprintf(strbuff1, "%d", (int)MQTT_weatemp_min);
-  strcat(E_buff0, E_buff5); // 温度下限
-  strcat(E_buff0, strbuff1); // 
+  strcat(E_buff0, E_buff5);  // 温度下限
+  strcat(E_buff0, strbuff1); //
 
   strcat(E_buff0, E_buff7); // ten
   sprintf(strbuff1, "%d", (int)massConcentrationPm10p0);
@@ -649,7 +651,7 @@ void M_send()
 
   memset(strbuff1, 0, strlen(strbuff1));
   sprintf(strbuff1, "%d", (int)power);
-  strcat(E_buff0, E_buff27);    // 功率值 power
+  strcat(E_buff0, E_buff27); // 功率值 power
   strcat(E_buff0, strbuff1); // E_buff28
 
   strcat(E_buff0, E_buff29);
@@ -853,7 +855,7 @@ void Mqtt_getcallback(char *topic, byte *payload, unsigned int length)
     {
       screenstate = jsonBuffer["openFlag"]; // 解析JSON 读取字符串//0：关闭 1：开启
       // 输出结果：打印解析后的值
-      Serial.printf("screenstate : %d",screenstate);
+      Serial.printf("screenstate : %d", screenstate);
     }
   }
   if (!jsonerror && jsonBuffer.containsKey("weather")) // 判断是否有"weather"这一字段,如果有
@@ -948,7 +950,7 @@ void screen_init()
   tft.fillScreen(TFT_BLACK);
   tft.loadFont(font_56);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.drawString("REALTEMP",15,90);//wendu
+  tft.drawString("REALTEMP", 15, 90); // wendu
   tft.unloadFont();
   delay(200);
   digitalWrite(screen, HIGH); // 屏幕判断
@@ -962,6 +964,18 @@ void screen_test()
   if (Screen_chage == 1) // 页面改变
   {
     Screen_chage = 0;
+    if (Screen_Rotation != MQTT_Rotation)
+    {
+      if (Screen_Rotation == 0)
+      {
+        tft.setRotation(1);
+      }
+      if (Screen_Rotation == 1)
+      {
+        tft.setRotation(3);
+      }
+      Screen_Rotation = MQTT_Rotation;
+    }
     tft.fillScreen(TFT_BLACK);
     // Screen_wifi=-1;
 
@@ -1019,22 +1033,21 @@ void screen_test()
     }
 
     tft.fillRoundRect(136, 19, 15, 7, 3, 0xbdf7); // 圆角矩形x,y,w,h,r
-    tft.fillCircle(164, 22, 3, 0x632C);               // 灰点0x632C
-    tft.fillCircle(180, 22, 3, 0x632C);               // 灰点
+    tft.fillCircle(164, 22, 3, 0x632C);           // 灰点0x632C
+    tft.fillCircle(180, 22, 3, 0x632C);           // 灰点
 
-    if (Aqi_PM25_value <= 50)//优
+    if (Aqi_PM25_value <= 50) // 优
     {
       tft.fillRoundRect(40, 86, 37, 6, 3, TFT_GREEN); // 圆角矩形x,y,w,h,r
     }
-    else if(Aqi_PM25_value <= 100)//良
+    else if (Aqi_PM25_value <= 100) // 良
     {
       tft.fillRoundRect(40, 86, 37, 6, 3, TFT_ORANGE); // 圆角矩形x,y,w,h,r
     }
-    else //差
+    else // 差
     {
       tft.fillRoundRect(40, 86, 37, 6, 3, TFT_RED); // 圆角矩形x,y,w,h,r
     }
-   
 
     if (Screen_Aqi != Aqi_PM25_value)
     {
@@ -1067,9 +1080,9 @@ void screen_test()
     }
     tft.unloadFont();
 
-    tft.fillRect(260, 140, 25, 3, 0x632C);//温度间隔线
-    
-    if(MQTT_weatemp_max != -254)
+    tft.fillRect(260, 140, 25, 3, 0x632C); // 温度间隔线
+
+    if (MQTT_weatemp_max != -254)
     {
       if (Screen_weatemp_max != MQTT_weatemp_max)
       {
@@ -1077,7 +1090,7 @@ void screen_test()
         memset(strbuff1, 0, strlen(strbuff1));
         sprintf(strbuff1, "%d°", Screen_weatemp_max);
         tft.setTextColor(TFT_BLACK, TFT_BLACK);
-        tft.drawRightString(strbuff1, 290, 106, 1);// wendu
+        tft.drawRightString(strbuff1, 290, 106, 1); // wendu
 
         sprintf(strbuff1, "%d°", MQTT_weatemp_max);
         tft.setTextColor(TFT_WHITE, TFT_BLACK);
@@ -1086,7 +1099,7 @@ void screen_test()
         Screen_weatemp_max = MQTT_weatemp_max;
       }
     }
-    if(MQTT_weatemp_min != -254)
+    if (MQTT_weatemp_min != -254)
     {
       if (Screen_weatemp_min != MQTT_weatemp_min)
       {
@@ -1094,7 +1107,7 @@ void screen_test()
         memset(strbuff1, 0, strlen(strbuff1));
         sprintf(strbuff1, "%d°", Screen_weatemp_min);
         tft.setTextColor(TFT_BLACK, TFT_BLACK);
-        tft.drawRightString(strbuff1, 290, 166, 1);// wendu
+        tft.drawRightString(strbuff1, 290, 166, 1); // wendu
 
         sprintf(strbuff1, "%d°", MQTT_weatemp_min);
         tft.setTextColor(TFT_WHITE, TFT_BLACK);
@@ -1115,9 +1128,9 @@ void screen_test()
   if (Screen_page == 1)
   {
     // 页眉
-    tft.fillCircle(146, 22, 3, 0x632C);               // 灰点
+    tft.fillCircle(146, 22, 3, 0x632C);           // 灰点
     tft.fillRoundRect(156, 19, 15, 7, 3, 0xbdf7); // 圆角矩形x,y,w,h,r
-    tft.fillCircle(180, 22, 3, 0x632C);               // 灰点0x632C
+    tft.fillCircle(180, 22, 3, 0x632C);           // 灰点0x632C
 
     tft.loadFont(font_23);
     tft.setTextColor(0xB596, TFT_BLACK);
@@ -1180,61 +1193,61 @@ void screen_test()
   {
     {
       // 页眉
-      tft.fillCircle(146, 22, 3, 0x632C);               // 灰点
-      tft.fillCircle(164, 22, 3, 0x632C);               // 灰点0x632C
+      tft.fillCircle(146, 22, 3, 0x632C);           // 灰点
+      tft.fillCircle(164, 22, 3, 0x632C);           // 灰点0x632C
       tft.fillRoundRect(180, 19, 15, 7, 3, 0xbdf7); // 圆角矩形x,y,w,h,r
     }
 
-    if (massConcentrationPm2p5 <= 35)//优
+    if (massConcentrationPm2p5 <= 35) // 优
     {
-      tft.fillRoundRect(30, 98, 37, 6, 3, TFT_GREEN);      // 圆角矩形x,y,w,h,r
+      tft.fillRoundRect(30, 98, 37, 6, 3, TFT_GREEN); // 圆角矩形x,y,w,h,r
     }
-    else if(massConcentrationPm2p5 <= 75)//良
+    else if (massConcentrationPm2p5 <= 75) // 良
     {
-      tft.fillRoundRect(30, 98, 37, 6, 3, TFT_ORANGE);      // 圆角矩形x,y,w,h,r
+      tft.fillRoundRect(30, 98, 37, 6, 3, TFT_ORANGE); // 圆角矩形x,y,w,h,r
     }
-    else //差
+    else // 差
     {
-      tft.fillRoundRect(30, 98, 37, 6, 3, TFT_RED);      // 圆角矩形x,y,w,h,r
+      tft.fillRoundRect(30, 98, 37, 6, 3, TFT_RED); // 圆角矩形x,y,w,h,r
     }
 
-    if (massConcentrationPm10p0 <= 50)//优
+    if (massConcentrationPm10p0 <= 50) // 优
     {
       tft.fillRoundRect(30, 176, 37, 6, 3, TFT_GREEN); // 圆角矩形x,y,w,h,r
     }
-    else if(massConcentrationPm10p0 <= 100)//良
+    else if (massConcentrationPm10p0 <= 100) // 良
     {
       tft.fillRoundRect(30, 176, 37, 6, 3, TFT_ORANGE); // 圆角矩形x,y,w,h,r
     }
-    else //差
+    else // 差
     {
       tft.fillRoundRect(30, 176, 37, 6, 3, TFT_RED); // 圆角矩形x,y,w,h,r
     }
 
-    if (vocIndex <= 50)//优
+    if (vocIndex <= 50) // 优
     {
       tft.fillRoundRect(185, 98, 37, 6, 3, TFT_GREEN); // 圆角矩形x,y,w,h,r
     }
-    else if(vocIndex <= 100)//良
+    else if (vocIndex <= 100) // 良
     {
       tft.fillRoundRect(185, 98, 37, 6, 3, TFT_ORANGE); // 圆角矩形x,y,w,h,r
     }
-    else //差
+    else // 差
     {
       tft.fillRoundRect(185, 98, 37, 6, 3, TFT_RED); // 圆角矩形x,y,w,h,r
     }
 
-    if (noxIndex <= 50)//优
+    if (noxIndex <= 50) // 优
     {
-      tft.fillRoundRect(185, 176, 37, 6, 3, TFT_GREEN);    // 圆角矩形x,y,w,h,r
+      tft.fillRoundRect(185, 176, 37, 6, 3, TFT_GREEN); // 圆角矩形x,y,w,h,r
     }
-    else if(noxIndex <= 100)//良
+    else if (noxIndex <= 100) // 良
     {
-      tft.fillRoundRect(185, 176, 37, 6, 3, TFT_ORANGE);    // 圆角矩形x,y,w,h,r
+      tft.fillRoundRect(185, 176, 37, 6, 3, TFT_ORANGE); // 圆角矩形x,y,w,h,r
     }
-    else //差
+    else // 差
     {
-      tft.fillRoundRect(185, 176, 37, 6, 3, TFT_RED);    // 圆角矩形x,y,w,h,r
+      tft.fillRoundRect(185, 176, 37, 6, 3, TFT_RED); // 圆角矩形x,y,w,h,r
     }
     // tft.fillRoundRect(30, 98, 37, 6, 3, 0x5623);      // 圆角矩形x,y,w,h,r
     // tft.fillRoundRect(30, 176, 37, 6, 3, TFT_ORANGE); // 圆角矩形x,y,w,h,r
@@ -1497,12 +1510,11 @@ void task5(void *pvParameters)
     // // 打印ADC值和电压值
     // Serial.printf("ADC Raw: %d, Voltage: %d mV\n", adc_value, voltage);
 
-
     // if (analogOriginalnum < 5)
     // {
     //   analogOriginalValueI = analogRead(ADC_I); // 读取ADC原始值
     //   analogOriginalValueV = analogRead(ADC_V); // 读取ADC原始值
-      
+
     //   analogOriginaltempV += analogOriginalValueV;
     //   analogOriginaltempI += analogOriginalValueI;
     //   analogOriginalnum++;
@@ -1521,10 +1533,10 @@ void task5(void *pvParameters)
     //   analogOriginalnum = 0;
     // }
     analogOriginalValueI = analogRead(ADC_I); // 读取ADC原始值
-    analogOriginalValueV = analogRead(ADC_V); // 读取ADC原始值  
+    analogOriginalValueV = analogRead(ADC_V); // 读取ADC原始值
     changeVoltsSumV = analogOriginalValueV * 2900 / 4096.0;
     changeVoltsSumI = analogOriginalValueI * 2950 / 4095.0;
-    power=(changeVoltsSumV*49)/10*changeVoltsSumI/1000/1000;
+    power = (changeVoltsSumV * 49) / 10 * changeVoltsSumI / 1000 / 1000;
     // Serial.printf("VADC analog value = %d ,%.1f mV VIN = %.1f\r\n", analogOriginalValueV, changeVoltsSumV , (changeVoltsSumV*49)/10);
     // Serial.printf("IADC analog value = %d ,%.1f mV\r\n", analogOriginalValueI, changeVoltsSumI);
     // Serial.printf("power value = %d ,%.2f ,%.1f W\r\n", (int)power, power, power);
