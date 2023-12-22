@@ -1361,7 +1361,7 @@ void setup() // 设备初始化
   Serial.begin(115200, SERIAL_8N1);
   pinMode(screen, OUTPUT);
   pinMode(Rest_K1, INPUT);                            // 输入上拉模式
-  attachInterrupt(Rest_K1, Rest_callBack, FALLING);   // 使能中断
+  attachInterrupt(Rest_K1, Rest_callBack, RISING);   // 使能中断
   pinMode(Touch_K1, INPUT);                           // 输入上拉模式
   attachInterrupt(Touch_K1, Touch_callBack, FALLING); // 使能中断
   getChipidID();                                      // 获取芯片ID 函数
