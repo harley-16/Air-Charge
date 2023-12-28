@@ -49,8 +49,8 @@ int MQTT_weatemp_max = -254;
 int MQTT_weatemp_min = -254;
 int Screen_power = -1;
 float power;
-char Screen_Rotation = 0; // 屏幕方向，正向：0，反向：1
-char MQTT_Rotation = 0;   // 屏幕方向，正向：0，反向：1
+int Screen_Rotation = 0; // 屏幕方向，正向：0，反向：1
+int MQTT_Rotation = 0;   // 屏幕方向，正向：0，反向：1
 /*WiFi配置*/
 const char *wifi_id = "1801";
 const char *wifi_psw = "realtemp";
@@ -918,6 +918,18 @@ void Mqtt_getcallback(char *topic, byte *payload, unsigned int length)
       // Serial.println(MQTT_weatemp_min);
     }
   }
+  if (!jsonerror && jsonBuffer.containsKey("spin")) // 判断是否有"spin"这一字段,如果有
+  {
+    if (!jsonBuffer["spin"].isNull())
+    {
+      MQTT_Rotation = jsonBuffer["spin"]; // 读取字符串//0：关闭 1：开启
+      Screen_chage = 1;
+      // // 输出结果：打印解析后的值
+      // Serial.println("MQTT_Rotation");
+      // Serial.println(MQTT_Rotation);
+    }
+  }
+
   //{"openFlag":0,"weather":"大风","OTAstate":"0","nowTime":"2023-11-30 14:15:10"}
   // memset(payload, 0, sizeof(payload));// 在解析后清除 payload 中的数据
   // free(payload);//报错：block already marked as free
