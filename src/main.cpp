@@ -191,7 +191,6 @@ char E_buff29[5] = "'}"; // 等于 temperatureBuff，仅用于测试
 //********自定义函数声明*******//
 void getChipidID(void); // 获取芯片ID 函数
 void restoreWiFi(void); // 删除保存的WIFI连接配置信息
-void my_client_publish(char *cardidBuff, char *temperatureBuff);
 void reconnect();
 void Wifi_connect(void);
 bool autoConfig(void);
@@ -213,7 +212,7 @@ void task1(void *pvParameters); // 任务函数
 
 // 任务2 网络连接
 #define TASK2_TASK_PRIO 1       // 任务优先级
-#define TASK2_STK_SIZE 1024 * 4 // 任务堆栈大小
+#define TASK2_STK_SIZE 1024 * 8 // 任务堆栈大小
 TaskHandle_t Tasks2_TaskHandle; // 任务句柄
 void task2(void *pvParameters); // 任务函数
 
@@ -808,33 +807,6 @@ void reconnect()
       // MQTT_CONNECT_UNAUTHORIZED    5
     }
   }
-}
-// 重定义MQTT发布主题的内容
-void my_client_publish(char *cardidBuff, char *temperatureBuff)
-{
-  // bool mqtt_publish_state = 0;
-  // // Serial.printf("current buff  cardidBuff = %s\r\n",cardidBuff);
-  // strcat(buff0, buff1);
-  // strcat(buff0, cardidBuff);
-  // // strcat(buff0,buff3);
-  // // strcat(buff0,buff4);
-  // strcat(buff0, buff5);
-  // strcat(buff0, espId_buff);
-  // strcat(buff0, buff7);
-  // strcat(buff0, temperatureBuff);
-  // strcat(buff0, buff9);
-  // Serial.printf("current buff = %s\r\n", buff0);
-
-  // mqtt_publish_state = client.publish("bluetoothMachineRecordTopic", buff0);
-  // if (mqtt_publish_state == true)
-  //   Serial.printf("MQTT publish success!\r\n");
-  // else
-  //   Serial.printf("MQTT publish failed!\r\n");
-
-  // memset(buff0, 0, sizeof(buff0));
-  // memset(cardidBuff, 0, sizeof(cardidBuff));
-  // memset(temperatureBuff, 0, sizeof(temperatureBuff));
-  // Serial.printf("******************************\r\n");
 }
 // MQTT接收中断回调函数
 void Mqtt_getcallback(char *topic, byte *payload, unsigned int length)
@@ -1462,7 +1434,7 @@ void task2(void *pvParameters)
     {
       Serial.printf("WiFi.status=%d", WiFi.status());
     }
-    vTaskDelay(1000 / portTICK_PERIOD_MS); // 等待0.25s
+    vTaskDelay(800 / portTICK_PERIOD_MS); // 等待0.25s
   }
   // WL_NO_SHIELD= 255：Wi-Fi 模块未初始化。
   // WL_IDLE_STATUS= 0：Wi-Fi 模块正在初始化或未连接。
@@ -1514,44 +1486,12 @@ void task5(void *pvParameters)
   int analogOriginaltempI = 0;
   while (true)
   {
-    //   // 读取ADC值
-    // uint32_t adc_value = adc1_get_raw(ADC1_CHANNEL_3);
-    // // 映射到电压
-    // uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_value, &adc1_chars);
-    // changeVoltsValue=adc_value*3000/4096;
-    // // 打印ADC值和电压值
-    // Serial.printf("ADC Raw: %d, Voltage: %d mV\n", adc_value, voltage);
-
-    // if (analogOriginalnum < 5)
-    // {
-    //   analogOriginalValueI = analogRead(ADC_I); // 读取ADC原始值
-    //   analogOriginalValueV = analogRead(ADC_V); // 读取ADC原始值
-
-    //   analogOriginaltempV += analogOriginalValueV;
-    //   analogOriginaltempI += analogOriginalValueI;
-    //   analogOriginalnum++;
-    // }
-    // else
-    // {
-    //   analogOriginalSumV = analogOriginaltempV / analogOriginalnum;
-    //   analogOriginalSumI = analogOriginaltempI / analogOriginalnum;
-    //   changeVoltsSumV = analogOriginalSumV * 2950 / 4095.0;
-    //   changeVoltsSumI = analogOriginalSumI * 2950 / 4095.0;
-    //   // 上传A读取的ADC值:
-    //   Serial.printf("ADC%d analog value = %d ,%.1f mV\r\n", analogOriginalnum, analogOriginalSumV, changeVoltsSumV);
-    //   Serial.printf("ADC%d analog value = %d ,%.1f mV\r\n", analogOriginalnum, analogOriginalSumI, changeVoltsSumI);
-    //   analogOriginaltempV = 0;
-    //   analogOriginaltempI = 0;
-    //   analogOriginalnum = 0;
-    // }
     analogOriginalValueI = analogRead(ADC_I); // 读取ADC原始值
     analogOriginalValueV = analogRead(ADC_V); // 读取ADC原始值
     changeVoltsSumV = analogOriginalValueV * 2900 / 4096.0;
     changeVoltsSumI = analogOriginalValueI * 2950 / 4095.0;
     power = (changeVoltsSumV * 49) / 10 * changeVoltsSumI / 1000 / 1000;
-    // Serial.printf("VADC analog value = %d ,%.1f mV VIN = %.1f\r\n", analogOriginalValueV, changeVoltsSumV , (changeVoltsSumV*49)/10);
-    // Serial.printf("IADC analog value = %d ,%.1f mV\r\n", analogOriginalValueI, changeVoltsSumI);
-    // Serial.printf("power value = %d ,%.2f ,%.1f W\r\n", (int)power, power, power);
+    
     vTaskDelay(1000 / portTICK_PERIOD_MS); // 等待1s
   }
 }
