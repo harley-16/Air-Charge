@@ -62,7 +62,7 @@ uint8_t macAddr[6]; // 定义macAddr为uint8_t类型的数组，这个数组含�
 uint8_t btAddr[6];  // 蓝牙MAC地址
 
 //*****MQTT协议数据声明部分*****//
-WiFiClient espClient;                                                   // 定义wifiClient实例
+WiFiClient espClient;                                                   // 创建一个网络客户端，用来创建MQTT客户端实例
 long lastMsg = 0;                                                       // 记录上一次发送信息的时长
 const char *mqtt_server = "221.224.143.146";                            // 使用HIVEMQ 的信息中转服务
 const int port = 1883;                                                  // 端口号
@@ -79,7 +79,7 @@ char screenweath[20] = "";
 static const char *OTA_url = "http://221.224.143.146:9800/center/firmware.bin"; // state url of your firmware image+
 // String OTA_Burl = "http://bin.bemfa.com/b/3BcMzgxODlhNjllNDcyNGQyY2JiNTM0MTExMjA0MmRmNGQ=Air.bin";//远程固件链接（测试）
 int ota_state = 0;
-char ota_version[] = "A0.01_1";
+char ota_version[] = "A0.01";
 /*// HttpsOTAUpdateClass HttpsOTA;
 static HttpsOTAStatus_t otastatus;
 static const char *server_certificate = "-----BEGIN CERTIFICATE-----\n" \
@@ -122,6 +122,7 @@ bool ble_Scan_Flag = 0;
 bool mqtt_flag = 0;    // // mqtt订阅主题变量 0：shibai 1：开启
 bool screenstate = 1;  // 屏幕状态变量 0：关闭 1：开启
 bool wifi_pdstate = 0; // WiFi重置变量 0：关闭 1：开启
+int mqtt_num=0;
 // //ADC变量
 int analogOriginalValueV = 0;
 int analogOriginalValueI = 0;
@@ -650,6 +651,7 @@ void M_send()
 
   memset(strbuff1, 0, strlen(strbuff1));
   sprintf(strbuff1, "%d", (int)power);
+  // sprintf(strbuff1, "%d", (int)mqtt_num);
   strcat(E_buff0, E_buff27); // 功率值 power
   strcat(E_buff0, strbuff1); // E_buff28
 
@@ -784,6 +786,7 @@ void reconnect()
     if (client.connect(client_id, "song", "song123"))
     {
       // Serial.println("connected");
+      client.subscribe(TOPIC); // 订阅命令下发主题
       mqtt_flag = 1; // mqtt订阅主题成功
     }
     else
@@ -890,7 +893,7 @@ void Mqtt_getcallback(char *topic, byte *payload, unsigned int length)
       // Serial.println(MQTT_weatemp_min);
     }
   }
-  if (!jsonerror && jsonBuffer.containsKey("spin")) // 判断是否有"spin"这一字段,如果有
+  if (!jsonerror && jsonBuffer.containsKey("spin")) // 判断是否有"spin"这一字段,如果有屏幕方向，正向：0，反向：1
   {
     if (!jsonBuffer["spin"].isNull())
     {
@@ -1367,13 +1370,13 @@ void setup() // 设备初始化
   Watchdog.begin(); // 默认定时器0,10秒超时.
 
   // RTOS任务创建
-  xTaskCreate(task1, "task1_task", TASK1_STK_SIZE, NULL, TASK1_TASK_PRIO, NULL);
-  xTaskCreate(task2, "task2_task", TASK2_STK_SIZE, NULL, TASK2_TASK_PRIO, NULL);
-  xTaskCreate(task3, "task3_task", TASK3_STK_SIZE, NULL, TASK3_TASK_PRIO, NULL);
-  xTaskCreate(task4, "task4_task", TASK4_STK_SIZE, NULL, TASK4_TASK_PRIO, NULL);
-  xTaskCreate(task5, "task5_task", TASK5_STK_SIZE, NULL, TASK5_TASK_PRIO, NULL);
-  xTaskCreate(Screeen_task, "task6_task", TASK6_STK_SIZE, NULL, TASK6_TASK_PRIO, NULL);
-  xTaskCreate(OTA_task, "task7_task", TASK7_STK_SIZE, NULL, TASK7_TASK_PRIO, NULL);
+  xTaskCreate(task1, "task1_task", TASK1_STK_SIZE, NULL, TASK1_TASK_PRIO, NULL);//看门狗
+  xTaskCreate(task2, "task2_task", TASK2_STK_SIZE, NULL, TASK2_TASK_PRIO, NULL);//网络连接判断、MQTT链接判断
+  xTaskCreate(task3, "task3_task", TASK3_STK_SIZE, NULL, TASK3_TASK_PRIO, NULL);//传感器读取
+  xTaskCreate(task4, "task4_task", TASK4_STK_SIZE, NULL, TASK4_TASK_PRIO, NULL);//屏幕开关状态
+  xTaskCreate(task5, "task5_task", TASK5_STK_SIZE, NULL, TASK5_TASK_PRIO, NULL);//ADC
+  xTaskCreate(Screeen_task, "task6_task", TASK6_STK_SIZE, NULL, TASK6_TASK_PRIO, NULL);//屏幕展示
+  xTaskCreate(OTA_task, "task7_task", TASK7_STK_SIZE, NULL, TASK7_TASK_PRIO, NULL);//OTA
 }
 
 void loop()
@@ -1426,10 +1429,10 @@ void task2(void *pvParameters)
         screenstate = 1; // 断MQTT开屏
       }
     }
-    if (mqtt_flag == 1) // 如果MQTT服务器连接成功
-    {
-      client.subscribe(TOPIC); // 订阅命令下发主题
-    }
+    // if (mqtt_flag == 1) // 如果MQTT服务器连接成功
+    // {
+    //   client.subscribe(TOPIC); // 订阅命令下发主题
+    // }
     if (wifi_connect_ok == 0) // wifi连接失效
     {
       Serial.printf("WiFi.status=%d", WiFi.status());
@@ -1462,7 +1465,7 @@ void task3(void *pvParameters)
   }
 }
 
-/*RTOS 任务4 ： 屏幕状态展示*/
+/*RTOS 任务4 ： 屏幕开关状态*/
 void task4(void *pvParameters)
 {
   while (true)
